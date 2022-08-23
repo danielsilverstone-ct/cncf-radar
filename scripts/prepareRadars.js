@@ -1,5 +1,5 @@
 import path from 'path'
-import { mkdirSync, readdirSync, writeFileSync } from 'fs'
+import { fstat, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import imageSize from 'image-size'
 import stripUrl from '../src/helpers/stripUrl'
 import loadYaml from '../src/helpers/loadYaml'
@@ -13,7 +13,14 @@ const getExtension = buffer => {
   return imageSize(buffer).type
 }
 
-const fetchLandscapeData = async _ => JSON.parse(await fetchUrl(settings.landscape_base + '/data/items.json'))
+const fetchLandscapeData = async _ => {
+  if (!process.env.LANDSCAPE_DATA) {
+    return JSON.parse(await fetchUrl(settings.landscape_base + '/data/items.json'))
+  } else {
+    console.log("Loading Landscape data from: " + process.env.LANDSCAPE_DATA)
+    return JSON.parse(readFileSync(process.env.LANDSCAPE_DATA))
+  }
+}
 
 const downloadLogo = async (sourcePath, name) => {
   const content = await fetchUrl(`${settings.landscape_base}${sourcePath}`)
