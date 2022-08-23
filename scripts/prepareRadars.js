@@ -129,11 +129,48 @@ const enhanceCompanyInfo = (radars, landscapeData) => {
   })
 }
 
+const populateRadarsFromLandscape = (radars, landscapeData) => {
+  var radar_names = []
+  var encountered_names = {}
+  radars.filter(radar => radar.isValid()).forEach(radar => {
+    radar_names.push(radar.key)
+    landscapeData.filter(item => item.extra && item.extra.radars).forEach(item => {
+      item.extra.radars.forEach(itemradar => {
+        const [radar_name, level] = itemradar.split("/")
+        encountered_names[radar_name] = encountered_names[radar_name] || []
+        encountered_names[radar_name].push(item.name)
+        if (radar.key == radar_name) {
+          radar.data.points.push({
+            name: item.name,
+            homepage: item.homepage_url,
+            level: level,
+            votes: {[level]: 1}
+          })
+        }
+      })
+    })
+  })
+  var failed = false
+  Object.entries(encountered_names).forEach(([radar_name, items]) => {
+    const uniq_items = [...new Set(items)]
+    if (!radar_names.includes(radar_name)) {
+      uniq_items.forEach(landscape_item => {
+        console.error("*** Landscape Item %s mentions unknown radar %s", landscape_item, radar_name);
+      })
+      failed = true
+    }
+  })
+  if (failed) {
+    throw "Invalid radars referenced from one or more landscape item. Processing stopped"
+  }
+}
+
 const fetchData = async _ => {
   const landscapeData = await fetchLandscapeData()
   const data = await loadRadarData()
 
   enhanceCompanyInfo(data, landscapeData)
+  populateRadarsFromLandscape(data, landscapeData)
 
   const invalidRadars = data.filter(radar => !radar.isValid())
 
